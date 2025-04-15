@@ -23,7 +23,7 @@ rule run_fmriprep:
         fs_license=config["preprocessing"]["fs_license_path"],
         output_space=config["preprocessing"]["output_space"],
         n_cpus=workflow.cores,
-        mem_mb=config["preprocessing"]["mem_mb"],
+        mem_mb=config.get("cmd_mem_mb", config["preprocessing"]["mem_mb"]),
         derivatives_dir=config["derivatives_output_dir"]
     shell:
         """
@@ -39,7 +39,6 @@ rule run_fmriprep:
             --nprocs {params.n_cpus} \
             --mem_mb {params.mem_mb} \
             --skip-bids-validation \
-            -v \
             -w /out/work
         """
 

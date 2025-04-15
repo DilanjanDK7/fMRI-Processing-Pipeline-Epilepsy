@@ -1,8 +1,0 @@
-Building DAG of jobs...
-MissingInputException in rule compute_alff in file /app/workflows/Snakefile, line 96:
-Missing input files for rule compute_alff:
-    output: /data/input/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/input/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz
-    wildcards: subject=sub-17017
-    affected files:
-        /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
-        /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz

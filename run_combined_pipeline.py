@@ -88,7 +88,7 @@ def convert_dicom_to_bids(dicom_dir: Path, bids_output_dir: Path, dcm2bids_confi
 
 # --- Pipeline Stages ---
 
-def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores: int, participant_label: list[str] | None = None):
+def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores: int, participant_label: list[str] | None = None, memory_mb_override: int | None = None):
     """
     Runs the fmriprep Snakemake pipeline.
 
@@ -97,6 +97,7 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         fmriprep_output_dir: Path where fmriprep derivatives should be saved.
         cores: Number of cores to use for Snakemake.
         participant_label: Optional list of specific participant labels to process.
+        memory_mb_override: Optional memory limit in MB to pass directly to fmriprep.
 
     Returns:
         True if successful, False otherwise.
@@ -142,15 +143,28 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         "snakemake",
         "--snakefile", str(FMRIREP_SNAKEFILE.resolve()),
         "--directory", str(FMRIREP_SNAKEFILE.parent.resolve()),
-        "--config",
+    ]
+    # Add config overrides
+    config_opts = [
         f"bids_input_dir={str(bids_input_dir.resolve())}",
         f"derivatives_output_dir={str(fmriprep_output_dir.resolve())}",
+    ]
+    if memory_mb_override is not None:
+        # Use a simple key for command-line config
+        config_opts.append(f"cmd_mem_mb={memory_mb_override}") 
+        logging.info(f"Passing memory override to Snakemake: cmd_mem_mb={memory_mb_override} MB")
+    
+    cmd.extend(["--config"] + config_opts)
+    
+    # Add other flags
+    cmd.extend([
         "--cores", str(cores),
         "--use-conda",
         "--rerun-incomplete",
         "--keep-going",
-        "-p"
-    ]
+        "-p" # Print shell commands
+    ])
+
     # Add the specific target files to the command
     cmd.extend(fmriprep_targets)
 
@@ -245,6 +259,8 @@ def main():
                              "If not specified, the feature extraction script defaults will be used.")
     parser.add_argument("--cores", type=int, default=4,
                         help="Number of CPU cores to use for pipeline stages.")
+    parser.add_argument("--memory_mb", type=int, default=None,
+                        help="Memory limit in MB for fMRIPrep stage (overrides config).")
     parser.add_argument("--skip_fmriprep", action="store_true",
                         help="Skip the fMRIPrep stage (assumes outputs already exist).")
     parser.add_argument("--skip_feature_extraction", action="store_true",
@@ -300,7 +316,7 @@ def main():
     # --- Run Pipeline Stages ---
     fmriprep_success = True
     if not args.skip_fmriprep:
-        fmriprep_success = run_fmriprep_pipeline(bids_dir, fmriprep_output_base, args.cores, args.participant_label)
+        fmriprep_success = run_fmriprep_pipeline(bids_dir, fmriprep_output_base, args.cores, args.participant_label, args.memory_mb)
         if not fmriprep_success:
             logging.error("fMRIPrep stage failed. Aborting.")
             sys.exit(1)
@@ -336,5 +352,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
