@@ -16,6 +16,27 @@ The pipeline is orchestrated by a main Python script (`run_combined_pipeline.py`
 
 For more detailed information on the pipeline architecture, configuration, and troubleshooting, please see the [Comprehensive Pipeline Documentation](docs/pipeline_details.md).
 
+## Pipeline Workflow
+
+```mermaid
+flowchart TD
+    input[Input Data] --> cond{DICOM?}
+    cond -->|Yes| dcm[Convert to BIDS\n dcm2bids]
+    cond -->|No| bids[BIDS-formatted data]
+    dcm --> bids
+    bids --> skip1{Skip fMRIPrep?}
+    skip1 -->|No| fmriprep[fMRIPrep\n Docker Container]
+    skip1 -->|Yes| derivatives[BIDS Derivatives]
+    fmriprep --> derivatives
+    derivatives --> skip2{Skip Feature\nExtraction?}
+    skip2 -->|No| features[Feature Extraction\n Docker Container]
+    skip2 -->|Yes| output[Final Output]
+    features --> output
+    
+    classDef optional fill:#f9f,stroke:#333,stroke-width:2px;
+    class dcm,fmriprep,features optional
+```
+
 ## Prerequisites
 
 Before running the pipeline, ensure you have the following installed:

@@ -7,6 +7,55 @@
 
 This document provides a detailed explanation of the Epilepsy fMRI Processing Pipeline, complementing the overview found in the main `README.md`. It covers the architecture, workflow stages, configuration nuances, and usage instructions.
 
+## Detailed Pipeline Workflow
+
+```mermaid
+flowchart TD
+    subgraph "User Interface"
+        run[run_pipeline.sh] --> |Parses args & checks deps| orchestrator[run_combined_pipeline.py]
+    end
+    
+    subgraph "Input Data"
+        dicom[DICOM Data] -->|--is_dicom flag| convert[dcm2bids]
+        convert -->|Uses dcm2bids_config.json| bids_conv[BIDS Converted Data]
+        bids[BIDS Data] -->|Direct input| orchestrator
+        bids_conv -->|Converted input| orchestrator
+    end
+    
+    subgraph "fMRIPrep Workflow"
+        orchestrator -->|Unless --skip_fmriprep| fmriprep_snake[fmriprep/Snakefile]
+        fmriprep_snake -->|Reads| fmriprep_config[config/pipeline_config.yaml]
+        fmriprep_license[config/license.txt] -->|Mounted to| fmriprep_snake
+        fmriprep_snake -->|docker run| fmriprep_container[nipreps/fmriprep Container]
+        fmriprep_container -->|Processes BIDS data| fmriprep_output[fMRIPrep Outputs]
+    end
+    
+    subgraph "Feature Extraction Workflow"
+        orchestrator -->|Unless --skip_feature_extraction| feature_script[run_container_pipeline.sh]
+        feature_script -->|Builds if needed| feature_image[fmri-feature-extraction Image]
+        feature_script -->|docker run| feature_container[Feature Extraction Container]
+        feature_container -->|Runs internal| feature_snake[Internal Snakemake Workflow]
+        feature_snake -->|Reads| feature_config[workflows/config/config.yaml]
+        fmriprep_output -->|Input to| feature_container
+        feature_snake -->|Processes data| feature_output[Feature Outputs]
+    end
+    
+    subgraph "Output Structure"
+        fmriprep_output -->|/derivatives/fmriprep/| final_output[Final Output Directory]
+        feature_output -->|/derivatives/sub-*/func/Analytical_metrics/| final_output
+    end
+    
+    classDef script fill:#f9f,stroke:#333,stroke-width:1px;
+    classDef container fill:#bef,stroke:#333,stroke-width:1px;
+    classDef config fill:#fdb,stroke:#333,stroke-width:1px;
+    classDef data fill:#dfd,stroke:#333,stroke-width:1px;
+    
+    class run,orchestrator,fmriprep_snake,feature_script,feature_snake script;
+    class fmriprep_container,feature_container,feature_image container;
+    class fmriprep_config,fmriprep_license,feature_config,dcm2bids_config config;
+    class dicom,bids,bids_conv,fmriprep_output,feature_output,final_output data;
+```
+
 ## Pipeline Architecture
 
 The pipeline is designed as a two-stage process orchestrated by a central Python script and launched via a Bash wrapper.
