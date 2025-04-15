@@ -14,6 +14,8 @@ This pipeline automates the following steps:
 
 The pipeline is orchestrated by a main Python script (`run_combined_pipeline.py`) and launched via a Bash wrapper (`run_pipeline.sh`) that checks for dependencies.
 
+For more detailed information on the pipeline architecture, configuration, and troubleshooting, please see the [Comprehensive Pipeline Documentation](docs/pipeline_details.md).
+
 ## Prerequisites
 
 Before running the pipeline, ensure you have the following installed:
@@ -119,6 +121,16 @@ All outputs are organized within the specified `<output_directory>`:
     *   Contains Feature Extraction outputs, typically nested within subject folders (e.g., `sub-17017/func/Analytical_metrics/ALFF/`, `sub-17017/func/Analytical_metrics/ReHo/`, etc.).
 
 Logs from the Python orchestrator script are printed to the console during execution. Detailed logs from Snakemake, fMRIPrep, and the feature extraction steps might also be available within the output directory or printed to the console, depending on their internal configurations.
+
+## Detailed Documentation
+
+*   **Main Pipeline:** For a comprehensive overview of the combined pipeline architecture, configuration, and troubleshooting, see the [Comprehensive Pipeline Documentation](docs/pipeline_details.md).
+*   **Feature Extraction Container:** For details specific to the feature extraction module, refer to the following guides within its documentation directory:
+    *   [Feature Extraction README](Feature_extraction_Container/docs/README.md)
+    *   [User Guide](Feature_extraction_Container/docs/USER_GUIDE.md)
+    *   [Quick Reference](Feature_extraction_Container/docs/QUICK_REFERENCE.md)
+    *   [RSN Guide](Feature_extraction_Container/docs/RSN_GUIDE.md)
+    *   [Visualization Guide](Feature_extraction_Container/docs/VISUALIZATION_GUIDE.md)
 
 ## License
 
