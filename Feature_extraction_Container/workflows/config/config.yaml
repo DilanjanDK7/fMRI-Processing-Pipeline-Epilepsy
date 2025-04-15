@@ -1,0 +1,49 @@
+# Input/Output settings
+bids_derivatives_dir: "/data/input"  # Path to the parent directory containing subject folders
+output_dir: "/data/input"  # Path where the output data should be written (now same as input)
+overwrite_existing: true  # Allow overwriting for testing
+
+# Subject settings
+subjects:
+  - "sub-17017"  # Subject ID from the test data path
+# - "sub-002"
+# - "sub-003"
+
+# Task settings 
+task: "rest"  # Task name as per BIDS specification
+space: "MNI152NLin2009cAsym"  # Spatial reference space
+
+# Acquisition parameters
+tr: 2.0  # Repetition time in seconds
+
+# Processing options
+n_jobs: 4  # Number of parallel jobs to run
+memory_limit: 8  # Memory limit in GB per job
+
+# ALFF computation settings
+compute_falff: true  # Whether to compute fALFF in addition to ALFF
+alff_bandpass_low: 0.01  # Lower frequency bound for ALFF (Hz)
+alff_bandpass_high: 0.08  # Upper frequency bound for ALFF (Hz)
+detrend_method: "linear"  # Method for detrending ("linear", "constant", or "none")
+normalize_method: "zscore"  # Normalization method ("zscore", "percent", or "none")
+
+# ReHo computation settings
+reho_neighborhood: 27  # Neighborhood size for ReHo (27 for 3x3x3, 19 for face+edge, 7 for face only)
+
+# Hurst exponent settings
+compute_hurst: true  # Whether to compute Hurst exponent
+hurst_method: "dfa"  # Method for Hurst exponent calculation (dfa, rs)
+
+# Fractal dimension settings
+compute_fractal: true  # Whether to compute fractal dimension
+fractal_method: "higuchi"  # Method for fractal dimension calculation (higuchi, psd)
+
+# QM FFT settings
+compute_qm_fft: true  # Whether to compute QM-FFT features
+qm_fft_eps: 1e-6  # Epsilon value for QM-FFT
+qm_fft_radius: 0.6  # Radius parameter for QM-FFT
+qm_fft_local_k: 5  # Local k parameter for QM-FFT
+
+# RSN extraction settings
+compute_rsn: true  # Whether to extract RSN activity
+rsn_sample_tp: 100  # Number of time points to sample for RSN extraction in testing mode 

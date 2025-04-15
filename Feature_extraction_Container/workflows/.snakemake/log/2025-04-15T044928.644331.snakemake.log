@@ -1,0 +1,108 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 32
+Rules claiming more threads will be scaled down.
+Job stats:
+job                count
+---------------  -------
+all                    1
+compute_alff           1
+compute_fractal        1
+compute_hurst          1
+compute_qm_fft         1
+compute_reho           1
+extract_rsn            1
+total                  7
+
+Select jobs to execute...
+
+[Tue Apr 15 04:49:28 2025]
+rule compute_alff:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz
+    jobid: 1
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 04:49:28 2025]
+rule compute_hurst:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/Hurst/sub-17017_hurst.nii.gz
+    jobid: 3
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 04:49:28 2025]
+rule compute_qm_fft:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5
+    jobid: 5
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 04:49:28 2025]
+rule compute_reho:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    jobid: 2
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 04:49:28 2025]
+rule compute_fractal:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/Fractal/sub-17017_fractal.nii.gz
+    jobid: 4
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 04:49:28 2025]
+rule extract_rsn:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/RSN/sub-17017_rsn_activity.h5
+    jobid: 6
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 04:49:29 2025]
+Finished job 5.
+1 of 7 steps (14%) done
+[Tue Apr 15 04:49:29 2025]
+Finished job 4.
+2 of 7 steps (29%) done
+[Tue Apr 15 04:49:29 2025]
+Finished job 1.
+3 of 7 steps (43%) done
+[Tue Apr 15 04:49:30 2025]
+Finished job 2.
+4 of 7 steps (57%) done
+[Tue Apr 15 04:49:31 2025]
+Finished job 3.
+5 of 7 steps (71%) done
+[Tue Apr 15 04:49:33 2025]
+Finished job 6.
+6 of 7 steps (86%) done
+Select jobs to execute...
+
+[Tue Apr 15 04:49:33 2025]
+localrule all:
+    input: /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz, /data/output/sub-17017/func/Analytical_metrics/Hurst/sub-17017_hurst.nii.gz, /data/output/sub-17017/func/Analytical_metrics/Fractal/sub-17017_fractal.nii.gz, /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5, /data/output/sub-17017/func/Analytical_metrics/RSN/sub-17017_rsn_activity.h5
+    jobid: 0
+    reason: Input files updated by another job: /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5, /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/Fractal/sub-17017_fractal.nii.gz, /data/output/sub-17017/func/Analytical_metrics/RSN/sub-17017_rsn_activity.h5, /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz, /data/output/sub-17017/func/Analytical_metrics/Hurst/sub-17017_hurst.nii.gz
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 04:49:33 2025]
+Finished job 0.
+7 of 7 steps (100%) done
+Complete log: .snakemake/log/2025-04-15T044928.644331.snakemake.log

@@ -1,0 +1,92 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 32
+Rules claiming more threads will be scaled down.
+Job stats:
+job                count
+---------------  -------
+compute_alff           1
+compute_fractal        1
+compute_hurst          1
+compute_qm_fft         1
+compute_reho           1
+total                  5
+
+Select jobs to execute...
+
+[Tue Apr 15 01:03:10 2025]
+rule compute_fractal:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/Fractal/sub-17017_fractal.nii.gz
+    jobid: 1
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 01:03:10 2025]
+rule compute_reho:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    jobid: 2
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 01:03:10 2025]
+rule compute_qm_fft:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5
+    jobid: 4
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 01:03:10 2025]
+rule compute_hurst:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/Hurst/sub-17017_hurst.nii.gz
+    jobid: 0
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+
+[Tue Apr 15 01:03:10 2025]
+rule compute_alff:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz
+    jobid: 3
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 01:03:10 2025]
+Error in rule compute_reho:
+    jobid: 2
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    shell:
+        
+        mkdir -p $(dirname /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz)
+        python /app/scripts/reho_test.py             --fmri /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz             --output /data/output/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz             --mask /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz             --neighborhood 27
+        
+        (one of the commands exited with non-zero exit code; note that snakemake uses bash strict mode!)
+
+[Tue Apr 15 01:03:11 2025]
+Finished job 1.
+1 of 5 steps (20%) done
+[Tue Apr 15 01:03:11 2025]
+Finished job 3.
+2 of 5 steps (40%) done
+[Tue Apr 15 01:03:11 2025]
+Finished job 4.
+3 of 5 steps (60%) done
+[Tue Apr 15 01:03:13 2025]
+Finished job 0.
+4 of 5 steps (80%) done
+Shutting down, this might take some time.
+Exiting because a job execution failed. Look above for error message
+Complete log: .snakemake/log/2025-04-15T010310.242225.snakemake.log

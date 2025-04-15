@@ -1,0 +1,25 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 1 (use --cores to define parallelism)
+Rules claiming more threads will be scaled down.
+Job stats:
+job               count
+--------------  -------
+compute_qm_fft        1
+total                 1
+
+Select jobs to execute...
+
+[Tue Apr 15 00:38:31 2025]
+rule compute_qm_fft:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5
+    jobid: 0
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 00:38:31 2025]
+Finished job 0.
+1 of 1 steps (100%) done
+Complete log: .snakemake/log/2025-04-15T003830.867705.snakemake.log

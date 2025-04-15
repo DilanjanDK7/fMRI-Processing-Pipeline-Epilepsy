@@ -1,0 +1,241 @@
+configfile: "config/config.yaml"
+
+import os
+
+# Helper function to get the appropriate fMRI file for a subject
+def get_fmri_file(wildcards):
+    return os.path.join(
+        config["bids_derivatives_dir"],
+        wildcards.subject,
+        "func",
+        f"{wildcards.subject}_task-{config.get('task', 'rest')}_space-{config.get('space', 'MNI152NLin2009cAsym')}_desc-preproc_bold.nii.gz"
+    )
+
+# Helper function to get the appropriate mask file for a subject
+def get_mask_file(wildcards):
+    return os.path.join(
+        config["bids_derivatives_dir"],
+        wildcards.subject,
+        "func",
+        f"{wildcards.subject}_task-{config.get('task', 'rest')}_space-{config.get('space', 'MNI152NLin2009cAsym')}_desc-brain_mask.nii.gz"
+    )
+
+# Define output directory structure
+def get_output_dir(wildcards):
+    return os.path.join(
+        config["bids_derivatives_dir"],
+        wildcards.subject,
+        "func",
+        "Analytical_metrics"
+    )
+
+# All outputs rule
+rule all:
+    input:
+        # ALFF outputs
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ALFF",
+            "{subject}_alff.nii.gz"
+        ), subject=config["subjects"]),
+        
+        # fALFF outputs (if enabled)
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ALFF",
+            "{subject}_falff.nii.gz"
+        ), subject=config["subjects"]) if config.get("compute_falff", True) else [],
+        
+        # ReHo outputs
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ReHo",
+            "{subject}_reho.nii.gz"
+        ), subject=config["subjects"]),
+        
+        # Hurst exponent outputs
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Hurst",
+            "{subject}_hurst.nii.gz"
+        ), subject=config["subjects"]) if config.get("compute_hurst", True) else [],
+        
+        # Fractal dimension outputs
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Fractal",
+            "{subject}_fractal.nii.gz"
+        ), subject=config["subjects"]) if config.get("compute_fractal", True) else [],
+        
+        # QM FFT outputs
+        expand(os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "QM_FFT",
+            "{subject}_qm_fft.h5"
+        ), subject=config["subjects"]) if config.get("compute_qm_fft", True) else []
+
+# Rule to compute ALFF and fALFF
+rule compute_alff:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        alff = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ALFF",
+            "{subject}_alff.nii.gz"
+        ),
+        falff = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ALFF",
+            "{subject}_falff.nii.gz"
+        ) if config.get("compute_falff", True) else []
+    params:
+        tr = config.get("tr", 2.0),
+        bandpass_low = config.get("alff_bandpass_low", 0.01),
+        bandpass_high = config.get("alff_bandpass_high", 0.08),
+        detrend = config.get("detrend_method", "linear"),
+        normalize = config.get("normalize_method", "zscore"),
+        falff_flag = "--falff" if config.get("compute_falff", True) else ""
+    shell:
+        """
+        mkdir -p $(dirname {output.alff})
+        python scripts/alff_test.py \
+            --fmri {input.fmri} \
+            --output {output.alff} \
+            --mask {input.mask} \
+            --tr {params.tr} \
+            --bandpass_low {params.bandpass_low} \
+            --bandpass_high {params.bandpass_high} \
+            --detrend {params.detrend} \
+            --normalize {params.normalize} \
+            {params.falff_flag}
+        """
+
+# Rule to compute ReHo
+rule compute_reho:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        reho = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "ReHo",
+            "{subject}_reho.nii.gz"
+        )
+    params:
+        neighborhood = config.get("reho_neighborhood", 27)
+    shell:
+        """
+        mkdir -p $(dirname {output.reho})
+        python scripts/reho_test.py \
+            --fmri {input.fmri} \
+            --output {output.reho} \
+            --mask {input.mask} \
+            --neighborhood {params.neighborhood}
+        """
+
+# Rule to compute Hurst exponent
+rule compute_hurst:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        hurst = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Hurst",
+            "{subject}_hurst.nii.gz"
+        )
+    shell:
+        """
+        mkdir -p $(dirname {output.hurst})
+        python scripts/hurst_test.py \
+            --fmri {input.fmri} \
+            --output {output.hurst} \
+            --mask {input.mask}
+        """
+
+# Rule to compute fractal dimension
+rule compute_fractal:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        fractal = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Fractal",
+            "{subject}_fractal.nii.gz"
+        )
+    shell:
+        """
+        mkdir -p $(dirname {output.fractal})
+        python scripts/fractal_test.py \
+            --fmri {input.fmri} \
+            --output {output.fractal} \
+            --mask {input.mask}
+        """
+
+# Rule to compute QM FFT features
+rule compute_qm_fft:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        qm_fft = os.path.join(
+            config["bids_derivatives_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "QM_FFT",
+            "{subject}_qm_fft.h5"
+        )
+    params:
+        subject_id = lambda wildcards: wildcards.subject,
+        eps = config.get("qm_fft_eps", 1e-6),
+        radius = config.get("qm_fft_radius", 0.6),
+        local_k = config.get("qm_fft_local_k", 5)
+    shell:
+        """
+        mkdir -p $(dirname {output.qm_fft})
+        python scripts/qm_fft_test.py \
+            --fmri {input.fmri} \
+            --mask {input.mask} \
+            --output_h5 {output.qm_fft} \
+            --subject_id {params.subject_id} \
+            --eps {params.eps} \
+            --radius {params.radius} \
+            --local_k {params.local_k}
+        """ 

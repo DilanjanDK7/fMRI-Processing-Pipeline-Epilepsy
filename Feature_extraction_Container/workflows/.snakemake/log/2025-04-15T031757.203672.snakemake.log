@@ -1,0 +1,25 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 32
+Rules claiming more threads will be scaled down.
+Job stats:
+job            count
+-----------  -------
+extract_rsn        1
+total              1
+
+Select jobs to execute...
+
+[Tue Apr 15 03:17:57 2025]
+rule extract_rsn:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/output/sub-17017/func/Analytical_metrics/RSN/sub-17017_rsn_activity.h5
+    jobid: 0
+    reason: Forced execution
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 03:18:03 2025]
+Finished job 0.
+1 of 1 steps (100%) done
+Complete log: .snakemake/log/2025-04-15T031757.203672.snakemake.log

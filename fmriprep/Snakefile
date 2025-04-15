@@ -1,0 +1,86 @@
+configfile: "config/pipeline_config.yaml"
+
+# Define directories early
+fmriprep_dir = config["derivatives_output_dir"]
+fmridenoise_dir = config["derivatives_output_dir"] + "/fmridenoise"
+fmripipeline_deriv_dir = config["derivatives_output_dir"] + "/fmripipeline"
+
+
+
+#########################################################
+# Preprocessing with fMRIPrep (containerized)
+#########################################################
+rule run_fmriprep:
+    input:
+        bids_dir = config["bids_input_dir"]
+    output:
+        bold = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
+        confounds = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_desc-confounds_timeseries.tsv",
+        brain_mask = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
+    params:
+        subject="{subject}",
+        task="{task}",
+        fs_license=config["preprocessing"]["fs_license_path"],
+        output_space=config["preprocessing"]["output_space"],
+        n_cpus=workflow.cores,
+        mem_mb=config["preprocessing"]["mem_mb"],
+        derivatives_dir=config["derivatives_output_dir"]
+    shell:
+        """
+        docker run --rm \
+            -v "{input.bids_dir}:/data:ro" \
+            -v "{params.derivatives_dir}:/out" \
+            -v "$(pwd)/config/license.txt:/opt/freesurfer/license.txt:ro" \
+            nipreps/fmriprep:25.0.0 \
+            /data /out participant \
+            --participant-label {params.subject} \
+            --fs-license-file /opt/freesurfer/license.txt \
+            --output-spaces {params.output_space} \
+            --nprocs {params.n_cpus} \
+            --mem_mb {params.mem_mb} \
+            --skip-bids-validation \
+            -v \
+            -w /out/work
+        """
+
+rule fix_permissions:
+    output:
+        directory("Results/pipeline_test_3/sub-{subject}/func")
+    shell:
+        """
+        echo "Fixing permissions for {output}..."
+        sudo chown -R {os.environ['USER']}:{os.environ['USER']} {output}
+        """
+
+# Rule to verify fMRIPrep reports are created
+rule check_fmriprep_reports:
+    input:
+        fmri = fmriprep_dir + "/{subject}/func/{subject}_task-" + config["tasks"][0] + "_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+    output:
+        report = fmriprep_dir + "/{subject}.html"
+    shell:
+        """
+        # This is just a placeholder to check that the report exists
+        # No actual command needed as fMRIPrep creates this file
+        if [ ! -f {output.report} ]; then
+            echo "Report file not found: {output.report}"
+            exit 1
+        fi
+        """
+
+#########################################################
+# fMRIDenoise: Denoise the BOLD signal post-fMRIPrep
+#########################################################
+rule run_fmridenoise:
+    input:
+        fmri=fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+    output:
+        fmri=fmridenoise_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-denoised_bold.nii.gz"
+    params:
+        additional_params=config["denoise"]["additional_params"]
+    container:
+        config["denoise"]["fmridenoise_container"]
+    shell:
+        """
+        fmridenoise {input.fmri} {output.fmri} {params.additional_params}
+        """

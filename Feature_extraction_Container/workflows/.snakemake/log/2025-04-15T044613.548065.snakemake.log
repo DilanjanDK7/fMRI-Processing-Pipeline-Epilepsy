@@ -1,0 +1,5 @@
+Building DAG of jobs...
+MissingInputException in rule all in file /app/workflows/Snakefile, line 33:
+Missing input files for rule all:
+    affected files:
+        /data/input/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz

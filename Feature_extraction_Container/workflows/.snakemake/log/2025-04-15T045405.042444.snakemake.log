@@ -1,0 +1,38 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 32
+Rules claiming more threads will be scaled down.
+Job stats:
+job             count
+------------  -------
+all                 1
+compute_reho        1
+total               2
+
+Select jobs to execute...
+
+[Tue Apr 15 04:54:05 2025]
+rule compute_reho:
+    input: /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz, /data/input/sub-17017/func/sub-17017_task-rest_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz
+    output: /data/input/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    jobid: 2
+    reason: Missing output files: /data/input/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    wildcards: subject=sub-17017
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 04:54:06 2025]
+Finished job 2.
+1 of 2 steps (50%) done
+Select jobs to execute...
+
+[Tue Apr 15 04:54:06 2025]
+localrule all:
+    input: /data/input/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz, /data/input/sub-17017/func/Analytical_metrics/ALFF/sub-17017_falff.nii.gz, /data/input/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz, /data/input/sub-17017/func/Analytical_metrics/Hurst/sub-17017_hurst.nii.gz, /data/input/sub-17017/func/Analytical_metrics/Fractal/sub-17017_fractal.nii.gz, /data/input/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5, /data/input/sub-17017/func/Analytical_metrics/RSN/sub-17017_rsn_activity.h5
+    jobid: 0
+    reason: Input files updated by another job: /data/input/sub-17017/func/Analytical_metrics/ReHo/sub-17017_reho.nii.gz
+    resources: tmpdir=/tmp
+
+[Tue Apr 15 04:54:06 2025]
+Finished job 0.
+2 of 2 steps (100%) done
+Complete log: .snakemake/log/2025-04-15T045405.042444.snakemake.log

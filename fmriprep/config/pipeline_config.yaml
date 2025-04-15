@@ -1,0 +1,32 @@
+# fmriprep/config/pipeline_config.yaml
+
+# List of task identifiers to process (e.g., ["rest", "nback"])
+tasks: ["rest"] 
+
+# Settings for the fMRIPrep preprocessing stage
+preprocessing:
+  # Absolute path to your Freesurfer license file
+  # IMPORTANT: Update this path!
+  fs_license_path: "/opt/freesurfer/license.txt" # Path inside the container as mounted by Snakefile
+  # Target output space for normalization
+  output_space: "MNI152NLin2009cAsym"
+  # Default resources for fMRIPrep (can be overridden by Snakemake command)
+  n_cpus: 4
+  mem_mb: 8000 # Memory in Megabytes (e.g., 8GB)
+
+# Settings for the fMRIDenoise stage
+denoise:
+  # Specify the container image for fMRIDenoise 
+  # Example: "nipreps/fmriprep:latest" or a local path if built differently
+  # IMPORTANT: Update this if needed!
+  fmridenoise_container: "nipreps/fmriprep:latest" # Assuming denoising tools are in the same env
+  # Additional parameters for the fmridenoise command (leave empty if none)
+  additional_params: ""
+
+# Note: bids_input_dir and derivatives_output_dir are typically provided
+#       via the --config flag in the main snakemake command (in run_combined_pipeline.py)
+#       and do not need to be set here unless you want fixed defaults.
+# bids_input_dir: "/path/to/bids/data"
+# derivatives_output_dir: "/path/to/output/derivatives"
+
+

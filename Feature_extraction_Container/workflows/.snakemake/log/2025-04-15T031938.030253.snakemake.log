@@ -1,0 +1,4 @@
+Building DAG of jobs...
+WildcardError in rule extract_rsn in file /app/workflows/Snakefile, line 254:
+Wildcards in input files cannot be determined from output files:
+'subject_id'
