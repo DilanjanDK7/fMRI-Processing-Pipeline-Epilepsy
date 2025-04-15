@@ -122,4 +122,4 @@ Logs from the Python orchestrator script are printed to the console during execu
 
 ## License
 
-This software is provided under a private license. All rights reserved. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
