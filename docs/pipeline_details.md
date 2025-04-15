@@ -23,7 +23,7 @@ flowchart TD
     end
     
     subgraph "fMRIPrep Workflow"
-        orchestrator -->|Unless --skip_fmriprep| fmriprep_snake[fmriprep/Snakefile]
+        orchestrator -->|Unless --skip-fmriprep| fmriprep_snake[fmriprep/Snakefile]
         fmriprep_snake -->|Reads| fmriprep_config[config/pipeline_config.yaml]
         fmriprep_license[config/license.txt] -->|Mounted to| fmriprep_snake
         fmriprep_snake -->|docker run| fmriprep_container[nipreps/fmriprep Container]
@@ -62,7 +62,7 @@ The pipeline is designed as a two-stage process orchestrated by a central Python
 
 1.  **Bash Wrapper (`run_pipeline.sh`):**
     *   Serves as the primary entry point for the user.
-    *   Parses basic input/output directory arguments and passes others to the Python script.
+    *   Parses basic input/output directory arguments as positional parameters and passes others to the Python script.
     *   Performs essential dependency checks:
         *   Python 3 and Pip existence.
         *   Required Python packages (`pybids`, `snakemake`, `dcm2bids`) installation (attempts `pip install --user` if missing).
@@ -157,7 +157,7 @@ To run the pipeline, execute the following command from the project root directo
 
 - `--cores N`: Number of CPU cores to use (default: 1)
 - `--memory N`: Memory limit in MB (default: 8192)
-- `--skip_fmriprep`: Skip the fMRIPrep processing stage
+- `--skip-fmriprep`: Skip the fMRIPrep processing stage
 - `--skip_feature_extraction`: Skip the feature extraction stage
 - `--is_dicom`: Treat the input as DICOM data (requires a dcm2bids config file)
 - `--dcm2bids_config FILE`: Path to the dcm2bids configuration file (required if `--is_dicom` is used)
@@ -175,7 +175,7 @@ Process BIDS data with 8 cores:
 
 Skip fMRIPrep (when rerunning or if fMRIPrep has already been run):
 ```bash
-./run_pipeline.sh /path/to/bids_data /path/to/output --skip_fmriprep
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip-fmriprep
 ```
 
 Run only fMRIPrep (skip feature extraction):

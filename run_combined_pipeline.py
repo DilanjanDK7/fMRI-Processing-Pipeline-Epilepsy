@@ -89,29 +89,97 @@ def convert_dicom_to_bids(dicom_dir: Path, bids_output_dir: Path, dcm2bids_confi
 def fix_permissions(directory: Path):
     """
     Fix permissions on a directory and its contents to ensure they are readable and writable.
+    Uses multiple approaches, trying without sudo first, then with sudo if necessary.
     
     Args:
         directory: Path to the directory to fix permissions for.
+    
+    Returns:
+        True if permissions were successfully fixed, False otherwise.
     """
     logging.info(f"Fixing permissions for {directory}...")
-    try:
-        # Use subprocess to run chmod recursively
-        subprocess.run(
-            ["sudo", "chmod", "-R", "775", str(directory)],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        logging.info(f"Fixed permissions for {directory}")
-        return True
-    except subprocess.CalledProcessError as e:
-        logging.warning(f"Failed to fix permissions: {e.stderr}")
-        return False
+
+    # Make multiple attempts with different strategies
+    strategies = [
+        # Try regular chmod first (no sudo)
+        ["chmod", "-R", "u+rw", str(directory)],
+        # If that fails, try with sudo
+        ["sudo", "chmod", "-R", "u+rw", str(directory)],
+        # More aggressive approach with group permissions as well
+        ["sudo", "chmod", "-R", "775", str(directory)],
+        # Last resort - change ownership 
+        ["sudo", "chown", "-R", f"{Path.home().name}:{Path.home().name}", str(directory)]
+    ]
+    
+    for strategy in strategies:
+        try:
+            logging.debug(f"Trying permission fix with: {' '.join(strategy)}")
+            result = subprocess.run(
+                strategy,
+                check=False,  # Don't raise exception on failure
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                logging.info(f"Fixed permissions for {directory}")
+                return True
+            # If this strategy failed, log and try the next one
+            logging.debug(f"Strategy failed: {' '.join(strategy)}, error: {result.stderr}")
+        
+        except Exception as e:
+            logging.debug(f"Permission fix attempt failed: {e}")
+    
+    # If we get here, all strategies failed
+    logging.warning(f"All permission fixing strategies failed for {directory}")
+    return False
+
+def check_fmriprep_outputs_exist(fmriprep_output_dir: Path, subjects: list[str], tasks: list[str]) -> bool:
+    """
+    Check if fMRIPrep outputs already exist and have reasonable sizes for all subjects and tasks.
+    
+    Args:
+        fmriprep_output_dir: The directory where fMRIPrep outputs are stored
+        subjects: List of subject IDs to check
+        tasks: List of task names to check
+        
+    Returns:
+        True if all expected outputs exist and have reasonable sizes, False otherwise
+    """
+    logging.info("Checking for existing fMRIPrep outputs...")
+    all_outputs_exist = True
+    
+    for subject in subjects:
+        for task in tasks:
+            # Check if the key output files exist
+            bold_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+            confounds_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_desc-confounds_timeseries.tsv"
+            mask_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
+            
+            # Check if files exist and have reasonable sizes
+            if (bold_out.exists() and bold_out.stat().st_size > 1000000 and 
+                confounds_out.exists() and confounds_out.stat().st_size > 0 and
+                mask_out.exists() and mask_out.stat().st_size > 0):
+                logging.info(f"Found existing fMRIPrep outputs for sub-{subject} task-{task}")
+            else:
+                logging.info(f"Missing or invalid fMRIPrep outputs for sub-{subject} task-{task}")
+                all_outputs_exist = False
+                break
+                
+        if not all_outputs_exist:
+            break
+    
+    if all_outputs_exist:
+        logging.info("All fMRIPrep outputs exist and appear valid. Can skip fMRIPrep stage.")
+    else:
+        logging.info("Not all fMRIPrep outputs exist or are valid. fMRIPrep stage is needed.")
+        
+    return all_outputs_exist
 
 # --- Pipeline Stages ---
 
-def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores: int, participant_label: list[str] | None = None, memory_mb_override: int | None = None):
+def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores: int, participant_label: list[str] | None = None, memory_mb_override: int | None = None, force: bool = False):
     """
     Runs the fmriprep Snakemake pipeline.
 
@@ -121,12 +189,21 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         cores: Number of cores to use for Snakemake.
         participant_label: Optional list of specific participant labels to process.
         memory_mb_override: Optional memory limit in MB to pass directly to fmriprep.
+        force: If True, forces re-execution of all jobs regardless of existing outputs.
 
     Returns:
         True if successful, False otherwise.
     """
     logging.info("--- Starting fMRIPrep Pipeline Stage (Skipping Denoising) ---")
+    
+    # Create output directory if it doesn't exist
     fmriprep_output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Fix permissions on the output directory before we start
+    # This ensures any existing files from previous runs are writable
+    if fmriprep_output_dir.exists():
+        logging.info("Pre-emptively fixing permissions on output directory...")
+        fix_permissions(fmriprep_output_dir)
 
     # Use pybids to find subjects and tasks to potentially build specific targets
     try:
@@ -147,6 +224,9 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
     # This ensures snakemake only runs fmriprep and its dependencies
     fmriprep_targets = []
     for subject in subjects_to_process:
+        # Add the permissions marker file without task dependency
+        perm_marker = fmriprep_output_dir / f"sub-{subject}/func/.permissions_fixed"
+        
         for task in tasks:
             # Construct expected output paths based on the run_fmriprep rule
             # Add 'sub-' prefix to match the Docker container's output format
@@ -157,6 +237,9 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
             report_out = fmriprep_output_dir / f"sub-{subject}.html"
             
             fmriprep_targets.extend([str(bold_out), str(confounds_out), str(mask_out), str(report_out)])
+        
+        # Add the permissions marker file after all task outputs
+        fmriprep_targets.append(str(perm_marker))
 
     if not fmriprep_targets:
         logging.error("Could not generate any target files for Snakemake.")
@@ -189,6 +272,11 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         "--latency-wait", "60",  # Wait up to 60 seconds for output files to appear
         "-p" # Print shell commands
     ])
+    
+    # If forcing execution, add the -F flag
+    if force:
+        cmd.append("-F")  # Force re-execution of all jobs
+        logging.info("Forcing re-execution of all jobs (ignoring existing outputs)")
 
     # Add the specific target files to the command
     cmd.extend(fmriprep_targets)
@@ -200,7 +288,8 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         logging.error("fMRIPrep pipeline stage failed.")
         return False
 
-    # Fix permissions for the output directory
+    # Fix permissions for the output directory again after completion
+    logging.info("Fixing permissions for fMRIPrep outputs...")
     fix_permissions(fmriprep_output_dir)
 
     logging.info("--- fMRIPrep Pipeline Stage Completed ---")
@@ -301,7 +390,10 @@ def main():
                         help="Skip the fMRIPrep stage (assumes outputs already exist).")
     parser.add_argument("--skip_feature_extraction", action="store_true",
                         help="Skip the Feature Extraction stage.")
-
+    parser.add_argument("--force", action="store_true",
+                        help="Force re-execution of all jobs regardless of existing outputs.")
+    parser.add_argument("--auto_skip_fmriprep", action="store_true", default=True,
+                        help="Automatically skip fMRIPrep if all outputs already exist. Set to false to always run fMRIPrep unless --skip_fmriprep is explicitly set.")
 
     args = parser.parse_args()
 
@@ -348,11 +440,28 @@ def main():
 
     # Define the primary output directory for fmriprep derivatives
     fmriprep_output_base = main_output_dir / "derivatives"
+    
+    # Check for existing fMRIPrep outputs and automatically skip if they exist
+    try:
+        # First get the subject list and task list
+        layout = BIDSLayout(str(bids_dir), validate=True)
+        subjects_to_process = args.participant_label if args.participant_label else layout.get_subjects()
+        tasks = layout.get_tasks()
+        
+        # If auto_skip_fmriprep is enabled and not forcing execution
+        if args.auto_skip_fmriprep and not args.force and not args.skip_fmriprep:
+            # Check if outputs already exist
+            if fmriprep_output_base.exists() and check_fmriprep_outputs_exist(fmriprep_output_base, subjects_to_process, tasks):
+                logging.info("Automatically skipping fMRIPrep stage since all outputs already exist.")
+                args.skip_fmriprep = True
+    except Exception as e:
+        logging.warning(f"Error checking for existing fMRIPrep outputs: {e}")
+        logging.warning("Will proceed with normal pipeline execution.")
 
     # --- Run Pipeline Stages ---
     fmriprep_success = True
     if not args.skip_fmriprep:
-        fmriprep_success = run_fmriprep_pipeline(bids_dir, fmriprep_output_base, args.cores, args.participant_label, args.memory_mb)
+        fmriprep_success = run_fmriprep_pipeline(bids_dir, fmriprep_output_base, args.cores, args.participant_label, args.memory_mb, args.force)
         if not fmriprep_success:
             logging.error("fMRIPrep stage failed. Aborting.")
             sys.exit(1)

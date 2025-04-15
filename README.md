@@ -99,7 +99,7 @@ Run from the project root directory:
 
 - `--cores N`: Number of CPU cores to use (default: 1)
 - `--memory N`: Memory limit in MB (default: 8192)
-- `--skip_fmriprep`: Skip the fMRIPrep processing stage
+- `--skip-fmriprep`: Skip the fMRIPrep processing stage
 - `--skip_feature_extraction`: Skip the feature extraction stage
 - `--is_dicom`: Treat the input as DICOM data (requires a dcm2bids config file)
 - `--dcm2bids_config FILE`: Path to the dcm2bids configuration file (required if `--is_dicom` is used)
@@ -117,7 +117,7 @@ Basic usage with BIDS data:
 
 To skip fMRIPrep (if already run):
 ```bash
-./run_pipeline.sh /path/to/bids_data /path/to/output --skip_fmriprep
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip-fmriprep
 ```
 
 To only run fMRIPrep (skip feature extraction):

@@ -6,13 +6,86 @@ fmridenoise_dir = config["derivatives_output_dir"] + "/fmridenoise"
 fmripipeline_deriv_dir = config["derivatives_output_dir"] + "/fmripipeline"
 
 
+#########################################################
+# Helper rules for permissions and locks
+#########################################################
+rule unlock_existing_outputs:
+    output:
+        temp("permission_unlock_{subject}_{task}")
+    params:
+        subject="{subject}",
+        task="{task}",
+        subject_func_dir=fmriprep_dir + "/sub-{subject}/func",
+        derivatives_dir=fmriprep_dir
+    shell:
+        """
+        # Create directories if they don't exist
+        mkdir -p {params.subject_func_dir}
+        mkdir -p {params.derivatives_dir}
+        
+        # Check if output files exist and try to make them writable with various approaches
+        for file in "{params.subject_func_dir}/sub-{params.subject}_task-{params.task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz" \
+                    "{params.subject_func_dir}/sub-{params.subject}_task-{params.task}_desc-confounds_timeseries.tsv" \
+                    "{params.subject_func_dir}/sub-{params.subject}_task-{params.task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"; do
+            if [ -f "$file" ]; then
+                echo "Unlocking existing file: $file"
+                
+                # Try chmod
+                chmod u+w "$file" 2>/dev/null || 
+                # If that fails, try sudo chmod
+                sudo chmod u+w "$file" 2>/dev/null || 
+                # If that fails, try temporarily changing ownership
+                sudo chown $(whoami) "$file" 2>/dev/null || 
+                # If all failed, just warn
+                echo "Could not unlock $file - attempting to proceed anyway"
+            fi
+        done
+        
+        # Also try to fix permissions on the parent directories
+        chmod -R u+w "{params.subject_func_dir}" 2>/dev/null || sudo chmod -R u+w "{params.subject_func_dir}" 2>/dev/null || true
+        
+        # Create an empty marker file
+        touch {output}
+        """
+
+rule fix_permissions:
+    # This rule will run after fMRIPrep has created its files
+    # We'll use a dynamic input pattern that doesn't fail if the directory doesn't exist yet
+    output:
+        # Create a marker file that indicates permissions were fixed
+        touch(fmriprep_dir + "/sub-{subject}/func/.permissions_fixed")
+    params:
+        subject_dir = fmriprep_dir + "/sub-{subject}",
+        subject_func_dir = fmriprep_dir + "/sub-{subject}/func",
+        derivatives_dir = fmriprep_dir
+    shell:
+        """
+        # Create the directory if it doesn't exist
+        mkdir -p {params.subject_func_dir}
+        
+        echo "Fixing permissions for {params.subject_dir}..."
+        # First try without sudo
+        chmod -R u+rw {params.subject_dir} 2>/dev/null || \
+        # If that fails, try with sudo
+        sudo chmod -R u+rw {params.subject_dir} 2>/dev/null || \
+        # If both fail, just print a warning
+        echo "Warning: Could not fix permissions for {params.subject_dir}"
+        
+        # Also try to fix permissions for the whole derivatives directory
+        chmod -R u+rw {params.derivatives_dir} 2>/dev/null || \
+        sudo chmod -R u+rw {params.derivatives_dir} 2>/dev/null || \
+        echo "Warning: Could not fix permissions for {params.derivatives_dir}"
+        """
+
 
 #########################################################
 # Preprocessing with fMRIPrep (containerized)
 #########################################################
 rule run_fmriprep:
     input:
-        bids_dir = config["bids_input_dir"]
+        bids_dir = config["bids_input_dir"],
+        # Make this rule depend on the unlock rule
+        unlock = "permission_unlock_{subject}_{task}"
     output:
         bold = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
         confounds = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_desc-confounds_timeseries.tsv",
@@ -27,28 +100,30 @@ rule run_fmriprep:
         derivatives_dir=config["derivatives_output_dir"]
     shell:
         """
-        docker run --rm \
-            -v "{input.bids_dir}:/data:ro" \
-            -v "{params.derivatives_dir}:/out" \
-            -v "$(pwd)/config/license.txt:/opt/freesurfer/license.txt:ro" \
-            nipreps/fmriprep:25.0.0 \
-            /data /out participant \
-            --participant-label {params.subject} \
-            --fs-license-file /opt/freesurfer/license.txt \
-            --output-spaces {params.output_space} \
-            --nprocs {params.n_cpus} \
-            --mem_mb {params.mem_mb} \
-            --skip-bids-validation \
-            -w /out/work
-        """
-
-rule fix_permissions:
-    output:
-        directory("Results/pipeline_test_3/sub-{subject}/func")
-    shell:
-        """
-        echo "Fixing permissions for {output}..."
-        sudo chown -R {os.environ['USER']}:{os.environ['USER']} {output}
+        # Check if all output files already exist and have reasonable sizes
+        # If they do, we'll just touch them to update timestamps and skip running fMRIPrep
+        if [ -f "{output.bold}" ] && [ -f "{output.confounds}" ] && [ -f "{output.brain_mask}" ] && [ $(stat -c%s "{output.bold}") -gt 1000000 ]; then
+            echo "Output files already exist and have reasonable sizes. Skipping fMRIPrep for {params.subject} task-{params.task}."
+            # Touch the files to update their timestamps - this satisfies Snakemake
+            touch "{output.bold}" "{output.confounds}" "{output.brain_mask}" || \
+            sudo touch "{output.bold}" "{output.confounds}" "{output.brain_mask}" || \
+            echo "Could not update file timestamps - you may see permission issues"
+        else
+            # Run fMRIPrep
+            docker run --rm \
+                -v "{input.bids_dir}:/data:ro" \
+                -v "{params.derivatives_dir}:/out" \
+                -v "$(pwd)/config/license.txt:/opt/freesurfer/license.txt:ro" \
+                nipreps/fmriprep:25.0.0 \
+                /data /out participant \
+                --participant-label {params.subject} \
+                --fs-license-file /opt/freesurfer/license.txt \
+                --output-spaces {params.output_space} \
+                --nprocs {params.n_cpus} \
+                --mem_mb {params.mem_mb} \
+                --skip-bids-validation \
+                -w /out/work
+        fi
         """
 
 # Rule to verify fMRIPrep reports are created
