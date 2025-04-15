@@ -63,47 +63,61 @@ The following Python packages are required and will be automatically installed b
 
 ## Usage
 
-The pipeline is run using the main Bash script `run_pipeline.sh`.
-
-**Basic Syntax:**
+Run from the project root directory:
 
 ```bash
-./run_pipeline.sh <input_directory> <output_directory> [OPTIONS]
+./run_pipeline.sh <input_directory> <output_directory> [OPTIONS...]
 ```
 
-**Required Arguments:**
+### Required Arguments
 
-*   `<input_directory>`: Path to the input data directory. This should contain either a BIDS dataset or DICOM files (if using `--is_dicom`).
-*   `<output_directory>`: Path to the main directory where all outputs (converted BIDS data, derivatives, logs) will be stored.
+- `<input_directory>`: Path to your BIDS-formatted fMRI data, or DICOM data if using the `--is_dicom` flag.
+- `<output_directory>`: Path where all outputs will be stored.
 
-**Common Optional Arguments (passed to `run_combined_pipeline.py`):**
+### Optional Arguments
 
-*   `--is_dicom`: Flag indicating that the `<input_directory>` contains DICOM data that needs conversion to BIDS.
-*   `--dcm2bids_config PATH`: Path to the `dcm2bids` JSON configuration file (required if `--is_dicom` is used and the default config isn't found).
-*   `--cores N`: Number of CPU cores to allocate to pipeline stages (default: 4). fMRIPrep will use this value.
-*   `--participant_label P1 [P2 ...]`: Process only specific participant labels. If omitted, all participants found in the BIDS dataset are processed by fMRIPrep.
-*   `--features F1 [F2 ...]`: Specify a list of features to calculate in the feature extraction stage (e.g., `alff reho hurst`). If omitted, the feature extraction script's default (likely all features) is used.
-*   `--skip_fmriprep`: Skip the fMRIPrep stage (assumes outputs exist in `<output_directory>/derivatives`).
-*   `--skip_feature_extraction`: Skip the feature extraction stage.
+- `--cores N`: Number of CPU cores to use (default: 1)
+- `--memory N`: Memory limit in MB (default: 8192)
+- `--skip_fmriprep`: Skip the fMRIPrep processing stage
+- `--skip_feature_extraction`: Skip the feature extraction stage
+- `--is_dicom`: Treat the input as DICOM data (requires a dcm2bids config file)
+- `--dcm2bids_config FILE`: Path to the dcm2bids configuration file (required if `--is_dicom` is used)
+- `--features LIST`: Comma-separated list of features to extract (default: all available)
+- `--param KEY=VALUE`: Override configuration parameters for feature extraction
+- `--fix_permissions`: Fix permissions on output directories after pipeline stages complete
+- `--force_unlock`: Remove Snakemake lock files if present before running the pipeline
 
-**Examples:**
+### Example Commands
 
-*   **Run full pipeline on BIDS data with 8 cores:**
-    ```bash
-    ./run_pipeline.sh /path/to/bids_data /path/to/output --cores 8
-    ```
-*   **Convert DICOM, run full pipeline, specify config:**
-    ```bash
-    ./run_pipeline.sh /path/to/dicom_data /path/to/output --is_dicom --dcm2bids_config /path/to/my_dcm2bids.json --cores 8
-    ```
-*   **Run only fMRIPrep for specific participants:**
-    ```bash
-    ./run_pipeline.sh /path/to/bids_data /path/to/output --participant_label 01 02 --skip_feature_extraction --cores 12
-    ```
-*   **Run only specific feature extraction steps (assuming fMRIPrep is done):**
-    ```bash
-    ./run_pipeline.sh /path/to/bids_data /path/to/output --skip_fmriprep --features alff falff --cores 4
-    ```
+Basic usage with BIDS data:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --cores 8 --memory 16384
+```
+
+To skip fMRIPrep (if already run):
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip_fmriprep
+```
+
+To only run fMRIPrep (skip feature extraction):
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip_feature_extraction
+```
+
+To process DICOM data:
+```bash
+./run_pipeline.sh /path/to/dicom_data /path/to/output --is_dicom --dcm2bids_config /path/to/config.json
+```
+
+To extract specific features and fix permissions:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --features alff,reho,vmhc,degree_centrality --fix_permissions
+```
+
+To force unlock any existing Snakemake locks and fix permissions:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --force_unlock --fix_permissions
+```
 
 ## Pipeline Stages
 

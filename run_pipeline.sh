@@ -8,6 +8,9 @@ PYTHON_CMD="python3"
 PIPELINE_SCRIPT="run_combined_pipeline.py"
 REQUIRED_PACKAGES=("bids" "snakemake" "dcm2bids") # Package names for pip/import check
 
+# Flag for force unlocking Snakemake
+FORCE_UNLOCK=false
+
 # --- Helper Functions ---
 usage() {
     echo "Usage: $0 <input_directory> <output_directory> [python_script_options...]" 
@@ -17,6 +20,10 @@ usage() {
     echo "  <output_directory>   Path to the desired output directory."
     echo "  [python_script_options...]  Optional arguments to pass directly to $PIPELINE_SCRIPT"
     echo "                              (e.g., --is_dicom, --cores N, --features F1 F2, --skip_fmriprep)."
+    echo ""
+    echo "Additional options:"
+    echo "  --force_unlock       Force unlock any Snakemake locks before running"
+    echo "  --fix_permissions    Fix permissions of output directory after running"
     echo ""
     echo "Example:"
     echo "  $0 /data/my_bids /results/pipeline_run --cores 8"
@@ -39,7 +46,29 @@ check_docker_running() {
     fi
 }
 
-# --- Argument Parsing ---
+unlock_snakemake() {
+    echo "Unlocking Snakemake locks in fmriprep directory..."
+    if [ -d "fmriprep/.snakemake" ]; then
+        rm -f fmriprep/.snakemake/*.lock
+        rm -rf fmriprep/.snakemake/locks
+        echo "Locks removed."
+    else
+        echo "No .snakemake directory found, nothing to unlock."
+    fi
+}
+
+fix_permissions() {
+    echo "Fixing permissions for output directory: $1"
+    sudo chmod -R 775 "$1"
+    echo "Permissions fixed."
+}
+
+# --- Process custom flags and extract them from arguments ---
+# These variables will hold arguments that should be passed to the Python script
+PYTHON_ARGS=()
+FIX_PERMISSIONS=false
+
+# Save the first two positional arguments (input and output directories)
 if [ "$#" -lt 2 ]; then
     echo "Error: Missing required arguments."
     usage
@@ -47,7 +76,26 @@ fi
 
 INPUT_DIR="$1"
 OUTPUT_DIR="$2"
-shift 2 # Remove the first two arguments, leaving any extras for the python script in $@
+shift 2 # Remove the first two arguments, leaving any extras for processing
+
+# Process remaining arguments
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --force_unlock)
+            FORCE_UNLOCK=true
+            shift
+            ;;
+        --fix_permissions)
+            FIX_PERMISSIONS=true
+            shift
+            ;;
+        *)
+            # For any other arguments, pass them through to the Python script
+            PYTHON_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
 
 # --- Dependency Checks ---
 echo "--- Checking Dependencies ---"
@@ -117,12 +165,17 @@ echo "Found $PIPELINE_SCRIPT."
 
 echo "--- Dependency Checks Complete ---"
 
+# --- Handle Force Unlock if Requested ---
+if [ "$FORCE_UNLOCK" = true ]; then
+    unlock_snakemake
+fi
+
 # --- Execute Pipeline ---
 echo ""
 echo "--- Starting Combined Pipeline using $PIPELINE_SCRIPT ---"
 
 # Construct the command
-pipeline_command=("$PYTHON_CMD" "$PIPELINE_SCRIPT" "$INPUT_DIR" "$OUTPUT_DIR" "$@")
+pipeline_command=("$PYTHON_CMD" "$PIPELINE_SCRIPT" "$INPUT_DIR" "$OUTPUT_DIR" "${PYTHON_ARGS[@]}")
 
 echo "Executing: ${pipeline_command[*]}"
 echo ""
@@ -132,6 +185,18 @@ if ! "${pipeline_command[@]}"; then
     echo ""
     echo "Error: The pipeline script ($PIPELINE_SCRIPT) failed."
     exit 1
+fi
+
+# Fix permissions if requested
+if [ "$FIX_PERMISSIONS" = true ]; then
+    fix_permissions "$OUTPUT_DIR"
+    
+    # Also fix permissions of the feature extraction container workflows
+    if [ -d "Feature_extraction_Container/workflows" ]; then
+        echo "Fixing permissions for Feature_extraction_Container/workflows..."
+        sudo chmod -R 775 "Feature_extraction_Container/workflows"
+        echo "Feature extraction workflow permissions fixed."
+    fi
 fi
 
 echo ""

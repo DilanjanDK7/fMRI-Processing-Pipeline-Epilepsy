@@ -14,9 +14,9 @@ rule run_fmriprep:
     input:
         bids_dir = config["bids_input_dir"]
     output:
-        bold = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
-        confounds = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_desc-confounds_timeseries.tsv",
-        brain_mask = fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
+        bold = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz",
+        confounds = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_desc-confounds_timeseries.tsv",
+        brain_mask = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
     params:
         subject="{subject}",
         task="{task}",
@@ -54,9 +54,9 @@ rule fix_permissions:
 # Rule to verify fMRIPrep reports are created
 rule check_fmriprep_reports:
     input:
-        fmri = fmriprep_dir + "/{subject}/func/{subject}_task-" + config["tasks"][0] + "_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+        fmri = fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-" + config["tasks"][0] + "_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
     output:
-        report = fmriprep_dir + "/{subject}.html"
+        report = fmriprep_dir + "/sub-{subject}.html"
     shell:
         """
         # This is just a placeholder to check that the report exists
@@ -72,9 +72,9 @@ rule check_fmriprep_reports:
 #########################################################
 rule run_fmridenoise:
     input:
-        fmri=fmriprep_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+        fmri=fmriprep_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
     output:
-        fmri=fmridenoise_dir + "/{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-denoised_bold.nii.gz"
+        fmri=fmridenoise_dir + "/sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-denoised_bold.nii.gz"
     params:
         additional_params=config["denoise"]["additional_params"]
     container:

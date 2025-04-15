@@ -86,6 +86,29 @@ def convert_dicom_to_bids(dicom_dir: Path, bids_output_dir: Path, dcm2bids_confi
     logging.info(f"DICOM to BIDS conversion completed. Output in: {bids_output_dir}")
     return True
 
+def fix_permissions(directory: Path):
+    """
+    Fix permissions on a directory and its contents to ensure they are readable and writable.
+    
+    Args:
+        directory: Path to the directory to fix permissions for.
+    """
+    logging.info(f"Fixing permissions for {directory}...")
+    try:
+        # Use subprocess to run chmod recursively
+        subprocess.run(
+            ["sudo", "chmod", "-R", "775", str(directory)],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        logging.info(f"Fixed permissions for {directory}")
+        return True
+    except subprocess.CalledProcessError as e:
+        logging.warning(f"Failed to fix permissions: {e.stderr}")
+        return False
+
 # --- Pipeline Stages ---
 
 def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores: int, participant_label: list[str] | None = None, memory_mb_override: int | None = None):
@@ -126,11 +149,12 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
     for subject in subjects_to_process:
         for task in tasks:
             # Construct expected output paths based on the run_fmriprep rule
-            bold_out = fmriprep_output_dir / f"{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
-            confounds_out = fmriprep_output_dir / f"{subject}/func/{subject}_task-{task}_desc-confounds_timeseries.tsv"
-            mask_out = fmriprep_output_dir / f"{subject}/func/{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
+            # Add 'sub-' prefix to match the Docker container's output format
+            bold_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz"
+            confounds_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_desc-confounds_timeseries.tsv"
+            mask_out = fmriprep_output_dir / f"sub-{subject}/func/sub-{subject}_task-{task}_space-MNI152NLin2009cAsym_desc-brain_mask.nii.gz"
             # Add report target as well, if the check_fmriprep_reports rule is desired
-            report_out = fmriprep_output_dir / f"{subject}.html"
+            report_out = fmriprep_output_dir / f"sub-{subject}.html"
             
             fmriprep_targets.extend([str(bold_out), str(confounds_out), str(mask_out), str(report_out)])
 
@@ -162,6 +186,7 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
         "--use-conda",
         "--rerun-incomplete",
         "--keep-going",
+        "--latency-wait", "60",  # Wait up to 60 seconds for output files to appear
         "-p" # Print shell commands
     ])
 
@@ -174,6 +199,9 @@ def run_fmriprep_pipeline(bids_input_dir: Path, fmriprep_output_dir: Path, cores
     if not run_command(cmd, cwd=None):
         logging.error("fMRIPrep pipeline stage failed.")
         return False
+
+    # Fix permissions for the output directory
+    fix_permissions(fmriprep_output_dir)
 
     logging.info("--- fMRIPrep Pipeline Stage Completed ---")
     return True
@@ -225,6 +253,14 @@ def run_feature_extraction_pipeline(feature_input_dir: Path, cores: int, feature
     if not run_command(cmd, cwd=None):
         logging.error("Feature extraction pipeline stage failed.")
         return False
+
+    # Fix permissions for feature extraction outputs
+    fix_permissions(feature_input_dir)
+    
+    # Also fix workflow directory permissions
+    workflow_dir = FEATURE_EXTRACTION_WRAPPER.parent / "workflows"
+    if workflow_dir.exists():
+        fix_permissions(workflow_dir)
 
     logging.info("--- Feature Extraction Pipeline Stage Completed ---")
     logging.info(f"Feature extraction outputs should be located within: {feature_input_dir}")

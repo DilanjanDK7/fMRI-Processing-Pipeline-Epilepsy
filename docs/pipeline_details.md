@@ -93,20 +93,71 @@ The pipeline is designed as a two-stage process orchestrated by a central Python
 
 ## Usage (Detailed)
 
-Run from the project root directory:
+To run the pipeline, execute the following command from the project root directory:
 
 ```bash
-./run_pipeline.sh <input_directory> <output_directory> [OPTIONS...]
+./run_pipeline.sh <input_directory> <output_directory> [OPTIONS]
 ```
 
-*   The script first checks dependencies.
-*   It then calls `python3 run_combined_pipeline.py <input_dir> <output_dir> [OPTIONS...]`.
-*   The Python script handles logic:
-    *   Checks for `--is_dicom`. If present, runs `dcm2bids` first. The output (`<output_dir>/bids_converted`) becomes the input for the next stage. If not present, `<input_dir>` is assumed to be BIDS.
-    *   Checks for `--skip_fmriprep`. If absent, calls `run_fmriprep_pipeline`.
-        *   This function determines subjects/tasks, constructs target output paths for fmriprep, and runs `snakemake` for the `fmriprep` stage.
-    *   Checks for `--skip_feature_extraction`. If absent and fMRIPrep stage succeeded (or was skipped), calls `run_feature_extraction_pipeline`.
-        *   This function calls the `run_container_pipeline.sh` script, passing the derivatives directory as input and forwarding `--cores` and `--features`.
+#### Required Arguments
+
+- `<input_directory>`: Path to your BIDS-formatted fMRI data, or DICOM data if using the `--is_dicom` flag.
+- `<output_directory>`: Path where all outputs will be stored.
+
+#### Optional Arguments
+
+- `--cores N`: Number of CPU cores to use (default: 1)
+- `--memory N`: Memory limit in MB (default: 8192)
+- `--skip_fmriprep`: Skip the fMRIPrep processing stage
+- `--skip_feature_extraction`: Skip the feature extraction stage
+- `--is_dicom`: Treat the input as DICOM data (requires a dcm2bids config file)
+- `--dcm2bids_config FILE`: Path to the dcm2bids configuration file (required if `--is_dicom` is used)
+- `--features LIST`: Comma-separated list of features to extract (default: all available)
+- `--param KEY=VALUE`: Override configuration parameters for feature extraction
+- `--fix_permissions`: Fix permissions on output directories after pipeline stages complete
+- `--force_unlock`: Remove Snakemake lock files if present before running the pipeline
+
+#### Examples
+
+Process BIDS data with 8 cores:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --cores 8 --memory 16384
+```
+
+Skip fMRIPrep (when rerunning or if fMRIPrep has already been run):
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip_fmriprep
+```
+
+Run only fMRIPrep (skip feature extraction):
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --skip_feature_extraction
+```
+
+Process DICOM data:
+```bash
+./run_pipeline.sh /path/to/dicom_data /path/to/output --is_dicom --dcm2bids_config /path/to/config.json
+```
+
+Extract specific features only:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --features alff,reho,vmhc,degree_centrality
+```
+
+Override configuration parameters for feature extraction:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --param low_pass=0.08 --param high_pass=0.01
+```
+
+Fix permissions on output directories:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --fix_permissions
+```
+
+Force unlock Snakemake locks from previous interrupted runs:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --force_unlock
+```
 
 **Verbosity:**
 *   The `-p` flag added to the `snakemake` call for fMRIPrep in the Python script will show the `docker run` command being executed.
