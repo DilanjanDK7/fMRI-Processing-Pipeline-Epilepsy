@@ -226,6 +226,10 @@ Force unlock Snakemake locks from previous interrupted runs:
 *   **Configuration Errors:** `KeyError` from Snakemake usually means a required key is missing in the relevant `.yaml` config file. Check paths and spelling. `WorkflowError: Config file must be given as JSON or YAML...` means the specified config file is empty, malformed, or not found.
 *   **`dcm2bids` Errors:** Usually related to an incorrect/incomplete configuration JSON or unexpected DICOM file structure. Check the `dcm2bids` output/logs carefully.
 
-## License
+## Copyright
 
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details. 
+© 2025 Dilanjan DK and BrainLab, University of Western Ontario. All rights reserved.
+
+**Contact:** Dilanjan DK (ddiyabal@uwo.ca)
+
+This software and its documentation are proprietary and confidential. Unauthorized copying, transfer, or use of this software, its documentation, and related materials, via any medium, is strictly prohibited without prior written consent from the copyright holders. 

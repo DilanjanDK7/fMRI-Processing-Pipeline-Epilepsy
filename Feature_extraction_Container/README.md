@@ -251,28 +251,52 @@ tar -czf feature_extraction_backup_$(date +%Y-%m-%d_%H%M%S).tar.gz workflows scr
 
 ## Troubleshooting
 
-- **Permission Issues**: If you encounter permission errors when accessing outputs, you may need to change ownership:
-  ```bash
-  sudo chown -R $(id -u):$(id -g) /path/to/output/dir
-  ```
+If you encounter issues running the pipeline, try these solutions:
 
-- **Docker Issues**: If the container fails to build, check Docker settings for sufficient memory allocation.
+### SnakemakeLockException
 
-- **Snakemake Locks**: If Snakemake reports a locked directory, unlock it:
-  ```bash
-  ./run_container.sh run -v /path/to/input/data:/data/input -v $(pwd)/pipeline_outputs:/data/output -v $(pwd)/workflows:/app/workflows snakemake --snakefile /app/workflows/Snakefile -d /app/workflows --unlock
-  ```
+If you get a `SnakemakeLockException` error:
 
-## License
+```
+Error: Directory cannot be locked. Please make sure that no other Snakemake process is trying to create the same files in parallel.
+```
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This can happen if a previous run was interrupted. Unlock the directory:
+
+```bash
+./run_container.sh run -v /path/to/input/data:/data/input -v $(pwd)/pipeline_outputs:/data/output -v $(pwd)/workflows:/app/workflows snakemake --snakefile /app/workflows/Snakefile -d /app/workflows --unlock
+```
+
+### Memory Issues
+
+If the container crashes due to memory limitations:
+
+1. Reduce parallelization: Use `--cores 1` to run one job at a time
+2. Increase Docker memory limit: Edit Docker settings to provide more memory
+3. Modify the `n_jobs` and `memory_limit` settings in the config file
+
+### File Permission Issues
+
+If you encounter permissions issues accessing output files:
+
+```bash
+sudo chown -R $(id -u):$(id -g) pipeline_outputs/
+```
+
+## Copyright
+
+© 2025 Dilanjan DK and BrainLab, University of Western Ontario. All rights reserved.
+
+**Contact:** Dilanjan DK (ddiyabal@uwo.ca)
+
+This software and its documentation are proprietary and confidential. Unauthorized copying, transfer, or use of this software, its documentation, and related materials, via any medium, is strictly prohibited without prior written consent from the copyright holders.
 
 ## Citation
 
 If you use this pipeline in your research, please cite:
 
 ```
-Author, Dilanjan DK (2025). fMRI Feature Extraction Container: A Comprehensive Pipeline for Analytical Metrics. ( Paper on the way)
+Dilanjan, DK. (2025). fMRI Feature Extraction Container: A Comprehensive Pipeline for Analytical Metrics. BrainLab, University of Western Ontario.
 ```
 
 ## Acknowledgments
@@ -283,4 +307,4 @@ This pipeline incorporates several open-source tools and packages:
 - AFNI for ReHo computation
 - QM_FFT_Feature_Package for quantum mechanical analysis 
 
-Developed at the BrainLab by Dilanjan DK ;-
+Developed at the BrainLab, University of Western Ontario by Dilanjan DK.

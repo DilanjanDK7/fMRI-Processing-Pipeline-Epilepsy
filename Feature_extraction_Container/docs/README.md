@@ -65,4 +65,10 @@ If you'd like to contribute to this documentation or the pipeline itself, please
 
 ## Contact
 
-For questions or support, please contact [your.email@example.com]. 
+For questions or support, please contact Dilanjan DK (ddiyabal@uwo.ca).
+
+## Copyright
+
+© 2025 Dilanjan DK and BrainLab, University of Western Ontario. All rights reserved.
+
+This software and its documentation are proprietary and confidential. Unauthorized copying, transfer, or use of this software, its documentation, and related materials, via any medium, is strictly prohibited without prior written consent from the copyright holders. 

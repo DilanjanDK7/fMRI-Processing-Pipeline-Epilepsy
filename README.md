@@ -167,6 +167,10 @@ Logs from the Python orchestrator script are printed to the console during execu
     *   [RSN Guide](Feature_extraction_Container/docs/RSN_GUIDE.md)
     *   [Visualization Guide](Feature_extraction_Container/docs/VISUALIZATION_GUIDE.md)
 
-## License
+## Copyright
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+© 2025 Dilanjan DK and BrainLab, University of Western Ontario. All rights reserved.
+
+**Contact:** Dilanjan DK (ddiyabal@uwo.ca)
+
+This software and its documentation are proprietary and confidential. Unauthorized copying, transfer, or use of this software, its documentation, and related materials, via any medium, is strictly prohibited without prior written consent from the copyright holders. 

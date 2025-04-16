@@ -1,0 +1,12 @@
+To be Fixed ***
+
+Remove sample size and Run for Full Feature extraction
+Fix K-space ( add gradient caclutaions ad=fter building several masks)
+Add plotting for the last feature maps and RSN 
+Fis the Docker user Issue ( I think the suuestion to use user tag is better)
+
+Convert the ppipeline to select voxel and also parcellation definitions 
+
+How to join the measures to undestand epilepsy
+
+Additional Plotf for quality control
