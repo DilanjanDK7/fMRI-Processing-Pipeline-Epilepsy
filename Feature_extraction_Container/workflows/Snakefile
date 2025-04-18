@@ -121,75 +121,94 @@ rule compute_reho:
     shell:
         "mkdir -p $(dirname {output.reho}) && export PATH=$CONDA_PREFIX/bin:$PATH && python /app/scripts/reho_test.py --fmri {input.fmri} --output {output.reho} --mask {input.mask} --neighborhood {params.neighborhood}"
 
- rule compute_alff:
-     input:
--        fmri = "{bids_derivatives_dir}/{subject}/func/{subject}_task-{task}_space-{space}_desc-preproc_bold.nii.gz",
--        mask = config.get("alff_mask", None)
-+        fmri = "{bids_derivatives_dir}/{subject}/func/{subject}_task-{task}_space-{space}_desc-preproc_bold.nii.gz",
-+        mask = config.get("alff_mask", None)
-     output:
--        alff = "{output_dir}/{subject}_task-{task}_alff.nii.gz"
-+        alff   = "{output_dir}/{subject}_task-{task}_ALFF.nii.gz",
-+        malff  = "{output_dir}/{subject}_task-{task}_mALFF.nii.gz",
-+        falff  = "{output_dir}/{subject}_task-{task}_fALFF.nii.gz",
-+        rsfa   = "{output_dir}/{subject}_task-{task}_RSFA.nii.gz"
-     params:
--        tr        = config["tr"],
--        band_low  = config.get("alff_band_low", 0.01),
--        band_high = config.get("alff_band_high", 0.08)
-+        tr        = config["tr"],
-+        band_low  = config.get("alff_band_low", 0.01),
-+        band_high = config.get("alff_band_high", 0.08)
-     shell:
--        "python /app/scripts/alff.py "
--        "--fmri {input.fmri} "
--        "--mask {input.mask or ''} "
--        "--output {wildcards.subject}_{wildcards.task}_rsfc_maps/ "
--        "--tr {params.tr}"
-+        "python /app/scripts/alff.py "
-+        "--fmri {input.fmri} "
-+        "{('--mask '+input.mask) if input.mask else ''} "
-+        "--output {output_dir}/{subject}_{task}_rsfc_maps/ "
-+        "--tr {params.tr} "
-+        "--low {params.band_low} "
-+        "--high {params.band_high}"
-+
-+    # downstream consumers should pick up ALFF/mALFF/fALFF/RSFA under the rsfc_maps folder
+# Rule to compute ALFF, fALFF, mALFF, RSFA
+rule compute_alff:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        alff   = os.path.join(config["output_dir"], "{subject}", "func", "Analytical_metrics", "ALFF", "{subject}_alff.nii.gz"),
+        malff  = os.path.join(config["output_dir"], "{subject}", "func", "Analytical_metrics", "ALFF", "{subject}_malff.nii.gz"),
+        falff  = os.path.join(config["output_dir"], "{subject}", "func", "Analytical_metrics", "ALFF", "{subject}_falff.nii.gz"),
+        rsfa   = os.path.join(config["output_dir"], "{subject}", "func", "Analytical_metrics", "ALFF", "{subject}_rsfa.nii.gz")
+    params:
+        tr        = config["tr"],
+        band_low  = config.get("alff_band_low", 0.01),
+        band_high = config.get("alff_band_high", 0.08),
+        output_dir = lambda wildcards, output: os.path.dirname(output.alff) # Get the directory for ALFF output
+    shell:
+        """
+        mkdir -p {params.output_dir}
+        python /app/scripts/alff.py \
+            --fmri {input.fmri} \
+            --mask {input.mask} \
+            --output_dir {params.output_dir} \
+            --tr {params.tr} \
+            --low {params.band_low} \
+            --high {params.band_high}
+        """
+        # Note: alff.py script is expected to save alff, malff, falff, rsfa in the specified output_dir
 
- rule compute_hurst:
-     input:
-         fmri = ...,
-         mask = config["atlas_path"]
-     output:
-         hurst = "{output_dir}/{subject}_task-{task}_hurst.nii.gz"
-     shell:
--        "python /app/scripts/hurst_test.py "
--        "--fmri {input.fmri} --atlas {input.mask} "
--        "--output {output.hurst}"
-+        "python /app/scripts/hurst_test.py "
-+        "--fmri {input.fmri} "
-+        "--atlas {input.mask} "
-+        "--output {output.hurst} "
-+        "--n-jobs {config.get('n_jobs',8)} "
-+        "--min-var {config.get('min_var',1e-6)}"
+# Rule to compute Hurst exponent
+rule compute_hurst:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        hurst = os.path.join(
+            config["output_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Hurst",
+            "{subject}_hurst.nii.gz"
+        )
+    params:
+        n_jobs = config.get('n_jobs', 8),
+        min_var = config.get('min_var', 1e-6)
+    shell:
+        """
+        mkdir -p $(dirname {output.hurst})
+        python /app/scripts/hurst_test.py \
+            --fmri {input.fmri} \
+            --mask {input.mask} \
+            --output {output.hurst} \
+            --n-jobs {params.n_jobs} \
+            --min-var {params.min_var}
+        """
 
- rule compute_fractal:
-     input:
-         fmri = ...,
-         mask = config["atlas_path"]
-     output:
-         fractal = "{output_dir}/{subject}_task-{task}_fd.nii.gz"
-     shell:
--        "python /app/scripts/fractal_test.py "
--        "--fmri {input.fmri} --atlas {input.mask} --output {output.fractal}"
-+        "python /app/scripts/fractal_test.py "
-+        "--fmri {input.fmri} "
-+        "--atlas {input.mask} "
-+        "--output {output.fractal} "
-+        "--method {config.get('fd_method','hfd')} "
-+        "--kmax {config.get('kmax',64)} "
-+        "--n-jobs {config.get('n_jobs',8)} "
-+        "--min-var {config.get('min_var',1e-6)}"
+# Rule to compute Fractal dimension
+rule compute_fractal:
+    input:
+        fmri = get_fmri_file,
+        mask = get_mask_file
+    output:
+        fractal = os.path.join(
+            config["output_dir"],
+            "{subject}",
+            "func",
+            "Analytical_metrics",
+            "Fractal",
+            "{subject}_fractal.nii.gz"
+        )
+    params:
+        method = config.get('fd_method', 'hfd'),
+        kmax = config.get('kmax', 64),
+        n_jobs = config.get('n_jobs', 8),
+        min_var = config.get('min_var', 1e-6)
+    shell:
+        """
+        mkdir -p $(dirname {output.fractal})
+        python /app/scripts/fractal_test.py \
+            --fmri {input.fmri} \
+            --mask {input.mask} \
+            --output {output.fractal} \
+            --method {params.method} \
+            --kmax {params.kmax} \
+            --n-jobs {params.n_jobs} \
+            --min-var {params.min_var}
+        """
+
 # Rule to compute QM FFT features
 rule compute_qm_fft:
     input:
@@ -209,7 +228,7 @@ rule compute_qm_fft:
         eps = config.get("qm_fft_eps", 1e-6),
         radius = config.get("qm_fft_radius", 0.6),
         local_k = config.get("qm_fft_local_k", 5),
-        sample_flag = "--sample"
+        sample_flag = "--sample" if config.get("qm_fft_sample", False) else ""
     shell:
         """
         mkdir -p $(dirname {output.qm_fft})
@@ -240,7 +259,7 @@ rule extract_rsn:
         )
     params:
         subject_id = lambda wildcards: wildcards.subject,
-        sample_flag = "--sample",
+        sample_flag = "--sample" if config.get("rsn_sample", False) else "",
         sample_tp = config.get("rsn_sample_tp", 100),
         output_dir = lambda wildcards, output: os.path.dirname(output.rsn_h5)
     shell:
