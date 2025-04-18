@@ -10,7 +10,7 @@ This repository contains a combined pipeline for processing fMRI data for epilep
 This pipeline automates the following steps:
 1.  Optional conversion of DICOM data to BIDS format using `dcm2bids`.
 2.  Preprocessing of BIDS-formatted fMRI data using `fMRIPrep` (running inside a Docker container).
-3.  Extraction of various quantitative fMRI features (e.g., ALFF, ReHo, Hurst) using a custom feature extraction workflow (running inside a Docker container).
+3.  Extraction of various quantitative fMRI features (e.g., ALFF, ReHo, Hurst, Fractal Dimension) using a custom feature extraction workflow (running inside a Docker container).
 
 The pipeline is orchestrated by a main Python script (`run_combined_pipeline.py`) and launched via a Bash wrapper (`run_pipeline.sh`) that checks for dependencies.
 
@@ -82,6 +82,11 @@ The following Python packages are required and will be automatically installed b
     *   By default, the script looks for `dcm2bids_config.json` in the input directory or the script's directory.
     *   You can specify a path to your config file using the `--dcm2bids_config` flag when running the pipeline.
 
+4.  **Feature Extraction Configuration:**
+    *   The feature extraction module supports various features, including the recently updated ALFF, Hurst exponent, and fractal dimension calculations.
+    *   You can specify which features to extract using the `--features` flag when running the pipeline.
+    *   Parameters for individual features can be overridden using the `--param KEY=VALUE` flag.
+
 ## Usage
 
 Run from the project root directory:
@@ -132,7 +137,12 @@ To process DICOM data:
 
 To extract specific features and fix permissions:
 ```bash
-./run_pipeline.sh /path/to/bids_data /path/to/output --features alff,reho,vmhc,degree_centrality --fix_permissions
+./run_pipeline.sh /path/to/bids_data /path/to/output --features alff,reho,hurst,fractal --fix_permissions
+```
+
+To extract specific features with custom parameters:
+```bash
+./run_pipeline.sh /path/to/bids_data /path/to/output --features alff,fractal --param alff_band_low=0.01 --param alff_band_high=0.1 --param fd_method=higuchi --param kmax=64
 ```
 
 To force unlock any existing Snakemake locks and fix permissions:
@@ -145,6 +155,74 @@ To force unlock any existing Snakemake locks and fix permissions:
 1.  **DICOM Conversion (Optional):** If `--is_dicom` is specified, `dcm2bids` converts the input DICOMs into a BIDS structure located in `<output_directory>/bids_converted`. This path then becomes the input for fMRIPrep.
 2.  **fMRIPrep:** Runs the `nipreps/fmriprep` container via Snakemake. Performs standard fMRI preprocessing steps (motion correction, susceptibility distortion correction, normalization, etc.). Outputs are saved in BIDS-Derivatives format within `<output_directory>/derivatives`. Denoising is currently skipped by default in the orchestrator script.
 3.  **Feature Extraction:** Runs the custom `fmri-feature-extraction` container via the `Feature_extraction_Container/run_container_pipeline.sh` script. Takes the fMRIPrep outputs from `<output_directory>/derivatives` as input. Calculates selected quantitative features and saves them within the derivatives structure, typically under `sub-*/func/Analytical_metrics/`.
+
+## Feature Extraction Details
+
+The feature extraction module supports the following metrics:
+
+### ALFF (Amplitude of Low Frequency Fluctuations)
+
+Measures the amplitude of BOLD signal fluctuations in a specific frequency range.
+
+- **Parameters:**
+  - `alff_band_low`: Lower frequency bound (default: 0.01 Hz)
+  - `alff_band_high`: Upper frequency bound (default: 0.08 Hz)
+  - `compute_falff`: Whether to compute fractional ALFF (default: true)
+
+- **Outputs:**
+  - ALFF maps (amplitude of low-frequency fluctuations)
+  - fALFF maps (fractional ALFF - ratio of ALFF to total power across all frequencies)
+  - mALFF maps (mean ALFF)
+  - RSFA maps (resting-state fluctuation amplitude)
+
+### Hurst Exponent
+
+Quantifies the long-term memory in time series, indicating the presence of long-range temporal correlations.
+
+- **Parameters:**
+  - `hurst_method`: Method for calculation ('dfa' or 'rs', default: 'dfa')
+  - `n_jobs`: Number of parallel jobs (default: 8)
+  - `min_var`: Minimum variance threshold for calculation (default: 1e-6)
+
+- **Outputs:**
+  - Voxel-wise Hurst exponent maps
+
+### Fractal Dimension
+
+Measures the complexity and self-similarity of the BOLD signal time series.
+
+- **Parameters:**
+  - `fd_method`: Method for fractal dimension calculation ('hfd' for Higuchi or 'psd' for power spectrum, default: 'hfd')
+  - `kmax`: Maximum lag parameter for Higuchi method (default: 64)
+  - `n_jobs`: Number of parallel jobs (default: 8)
+  - `min_var`: Minimum variance threshold for calculation (default: 1e-6)
+
+- **Outputs:**
+  - Voxel-wise fractal dimension maps
+
+### ReHo (Regional Homogeneity)
+
+Measures the similarity of time series of a given voxel to those of its nearest neighbors.
+
+- **Parameters:**
+  - `reho_neighborhood`: Cluster size for ReHo calculation (7, 19, or 27, default: 27)
+
+- **Outputs:**
+  - Voxel-wise ReHo maps
+
+### QM-FFT (Quasi-periodic Motif FFT)
+
+Identifies recurrent quasi-periodic patterns in the BOLD signal.
+
+- **Outputs:**
+  - QM-FFT feature maps in HDF5 format
+
+### RSN (Resting-State Networks) Activity
+
+Calculates activity metrics for predefined resting-state networks.
+
+- **Outputs:**
+  - RSN activity metrics in HDF5 format
 
 ## Output Structure
 

@@ -21,6 +21,7 @@ Welcome to the documentation for the fMRI Feature Extraction Container. This doc
 
 - [Main README](../README.md) - Overview and quick start information
 - [Configuration Template](../workflows/config/config.yaml) - Reference for pipeline configuration
+- [**Citation Guide**](CITATION.md) - Instructions for properly citing the pipeline and individual features
 
 ## Pipeline Overview
 

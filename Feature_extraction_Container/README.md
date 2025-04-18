@@ -40,7 +40,7 @@ For a complete documentation index, see the [Documentation README](docs/README.m
 The easiest way to run the pipeline is using the simplified script:
 
 ```bash
-./run_container_pipeline.sh --input /path/to/your/data --features alff,reho,qm_fft
+./run_container_pipeline.sh --input /path/to/your/data --features alff,reho,hurst,fractal
 ```
 
 #### Key Features of the Pipeline Script
@@ -63,9 +63,9 @@ Run ALFF and ReHo analyses with 4 cores:
 ./run_container_pipeline.sh --input /path/to/your/data --features alff,reho --cores 4
 ```
 
-Run QM-FFT on a specific subject with custom parameters:
+Run Hurst and Fractal analyses on a specific subject with custom parameters:
 ```bash
-./run_container_pipeline.sh --input /path/to/your/data --subject sub-17017 --features qm_fft --param qm_fft_eps=1e-5
+./run_container_pipeline.sh --input /path/to/your/data --subject sub-17017 --features hurst,fractal --param hurst_method=dfa --param fd_method=higuchi --param kmax=64
 ```
 
 For more options:
@@ -128,7 +128,9 @@ The pipeline generates output in the following structure:
 │       └── Analytical_metrics/
 │           ├── ALFF/
 │           │   ├── sub-<ID>_alff.nii.gz
-│           │   └── sub-<ID>_falff.nii.gz
+│           │   ├── sub-<ID>_falff.nii.gz
+│           │   ├── sub-<ID>_malff.nii.gz
+│           │   └── sub-<ID>_rsfa.nii.gz
 │           ├── ReHo/
 │           │   └── sub-<ID>_reho.nii.gz
 │           ├── Hurst/
@@ -169,11 +171,19 @@ memory_limit: 8    # Memory limit in GB per job
 
 # ALFF computation settings
 compute_falff: true
-alff_bandpass_low: 0.01
-alff_bandpass_high: 0.08
+alff_band_low: 0.01
+alff_band_high: 0.08
 
 # ReHo computation settings
 reho_neighborhood: 27  # 27 for 3x3x3 cube
+
+# Hurst computation settings
+hurst_method: "dfa"  # Options: "dfa" or "rs"
+min_var: 1e-6        # Minimum variance threshold
+
+# Fractal computation settings
+fd_method: "higuchi"  # Options: "higuchi" or "psd"
+kmax: 64             # Maximum lag parameter for Higuchi method
 
 # ... additional settings
 ```
@@ -184,127 +194,151 @@ reho_neighborhood: 27  # 27 for 3x3x3 cube
 
 Measures the amplitude of BOLD signal fluctuations in the low-frequency range (typically 0.01-0.08 Hz), providing insight into regional spontaneous brain activity.
 
+#### Implementation Details
+
+The ALFF implementation has been updated to provide enhanced functionality:
+
+- **Multiple Output Metrics**: 
+  - ALFF: Standard amplitude of low-frequency fluctuations
+  - fALFF: Fractional ALFF (ratio of ALFF to the total power across all frequencies)
+  - mALFF: Mean ALFF (normalized ALFF values)
+  - RSFA: Resting-state fluctuation amplitude
+
+- **Preprocessing Options**:
+  - Detrending methods: linear, constant, polynomial, or none
+  - Window functions: hamming, hanning, blackman, or none
+  - Normalization methods: z-score, percent change, or none
+
+- **Parameter Customization**:
+  - Adjustable frequency bands for low and high-frequency components
+  - Control over fALFF high-band cutoff frequencies
+
+#### Command Line Parameters
+
+```
+--alff_band_low FLOAT    Lower frequency bound (default: 0.01 Hz)
+--alff_band_high FLOAT   Upper frequency bound (default: 0.08 Hz)
+--compute_falff BOOL     Whether to compute fractional ALFF (default: true)
+```
+
 ### ReHo (Regional Homogeneity)
 
 Calculates similarity of the time series of a given voxel to those of its nearest neighbors, reflecting local synchronization of spontaneous brain activity.
+
+#### Command Line Parameters
+
+```
+--reho_neighborhood INT  Cluster size (7, 19, or 27; default: 27)
+```
 
 ### Hurst Exponent
 
 Quantifies the long-range temporal dependence in the fMRI time series, indicating the predictability of the signal.
 
+#### Implementation Details
+
+The updated Hurst exponent implementation offers:
+
+- **Multiple Calculation Methods**:
+  - DFA (Detrended Fluctuation Analysis): More robust to non-stationarity in the time series
+  - R/S (Rescaled Range): Traditional Hurst calculation method
+
+- **Performance Optimizations**:
+  - Parallelized computation for faster processing on multi-core systems
+  - Variance thresholding to avoid processing flat or nearly-flat signals
+
+- **Preprocessing Options**:
+  - Optional bandpass filtering to focus on specific frequency ranges
+  - Robust estimation with outlier handling
+
+#### Command Line Parameters
+
+```
+--hurst_method STRING    Method for calculation ("dfa" or "rs"; default: "dfa")
+--n_jobs INT             Number of parallel jobs (default: 8)
+--min_var FLOAT          Minimum variance threshold (default: 1e-6)
+```
+
 ### Fractal Dimension
 
 Estimates the complexity and self-similarity of the fMRI time series, providing insight into the chaotic nature of brain activity.
 
+#### Implementation Details
+
+The updated fractal dimension implementation features:
+
+- **Multiple Calculation Methods**:
+  - Higuchi Fractal Dimension (HFD): Time-domain approach that estimates curve length across different scales
+  - Power Spectral Density (PSD): Frequency-domain method that estimates fractal dimension from spectral properties
+
+- **Performance Enhancements**:
+  - Parallelized computation for efficient processing
+  - Adaptive scale selection for more accurate estimations
+  - Variance thresholding to focus on meaningful signals
+
+- **Parameter Customization**:
+  - Adjustable maximum lag parameter (kmax) for Higuchi method
+  - Control over normalization and preprocessing steps
+
+#### Command Line Parameters
+
+```
+--fd_method STRING       Method for fractal dimension calculation ("higuchi" or "psd"; default: "higuchi")
+--kmax INT               Maximum lag parameter for Higuchi method (default: 64)
+--n_jobs INT             Number of parallel jobs (default: 8)
+--min_var FLOAT          Minimum variance threshold (default: 1e-6)
+```
+
 ### QM-FFT (Quantum Mechanical Fourier Transform)
 
-Applies quantum mechanical principles to analyze fMRI data in the frequency domain, extracting several features:
-- Magnitude
-- Phase
-- Temporal difference magnitude
-- Temporal difference phase
-- Local variance (optional)
+Applies quantum mechanical principles to frequency analysis of fMRI data, providing unique insights into brain dynamics not captured by conventional methods.
 
-### RSN (Resting State Network) Activity
+### RSN (Resting State Network) Analysis
 
-Extracts time series from established resting-state networks using the Yeo atlas:
-- 7-Network parcellation
-- 17-Network parcellation
+Evaluates activity and connectivity within established resting-state networks, helping to characterize functional brain organization.
 
 ## Advanced Usage
 
-### Running Individual Analyses
+### Combining Multiple Features
 
-To run a specific analysis only (e.g., ALFF):
-
-```bash
-./run_container.sh run -v /path/to/input/data:/data/input -v $(pwd)/pipeline_outputs:/data/output -v $(pwd)/workflows:/app/workflows snakemake --snakefile /app/workflows/Snakefile -d /app/workflows --cores /data/output/sub-17017/func/Analytical_metrics/ALFF/sub-17017_alff.nii.gz
-```
-
-### Debugging and Testing
-
-For testing with smaller sample sizes:
+For comprehensive analysis, you can extract multiple features in a single run:
 
 ```bash
-./run_container.sh run -v /path/to/input/data:/data/input -v $(pwd)/pipeline_outputs:/data/output -v $(pwd)/workflows:/app/workflows snakemake --snakefile /app/workflows/Snakefile -d /app/workflows --cores 1 /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5
+./run_container_pipeline.sh --input /path/to/your/data --features alff,reho,hurst,fractal,qm_fft,rsn --cores 8
 ```
 
-Sample analysis uses reduced data sizes to speed up testing:
-- QM-FFT uses spatial sampling (configurable in scripts/qm_fft_test.py)
-- RSN analysis uses temporal sampling (configurable in config.yaml)
+### Custom Parameter Sets
 
-### Inspecting Outputs
-
-To examine HDF5 outputs (QM-FFT, RSN analysis):
+You can override multiple parameters to customize your analysis:
 
 ```bash
-./run_container.sh run -v $(pwd)/pipeline_outputs:/data/output h5ls -r /data/output/sub-17017/func/Analytical_metrics/QM_FFT/sub-17017_qm_fft.h5
+./run_container_pipeline.sh --input /path/to/your/data --features alff,hurst,fractal \
+  --param alff_band_low=0.01 \
+  --param alff_band_high=0.1 \
+  --param hurst_method=dfa \
+  --param fd_method=higuchi \
+  --param kmax=32 \
+  --param n_jobs=4
 ```
 
-## Backing Up the Pipeline
+### Using the Pipeline in Research Projects
 
-Create a backup of the current configuration:
-
-```bash
-tar -czf feature_extraction_backup_$(date +%Y-%m-%d_%H%M%S).tar.gz workflows scripts docker run_container.sh environment.yml README.md requirements.txt
-```
+When using this pipeline in your research, please ensure proper citation and acknowledgment. The methods implemented are based on established neuroimaging techniques with appropriate modifications for enhanced performance and reliability.
 
 ## Troubleshooting
 
-If you encounter issues running the pipeline, try these solutions:
+If you encounter issues, try the following steps:
 
-### SnakemakeLockException
+1. Ensure you have the latest version of the container
+2. Check that input data is properly formatted according to BIDS
+3. Increase memory allocation for more complex analyses
+4. Check logs for specific error messages
+5. Try running single features rather than combining multiple analyses
 
-If you get a `SnakemakeLockException` error:
+For persistent issues, please contact the maintainers.
 
-```
-Error: Directory cannot be locked. Please make sure that no other Snakemake process is trying to create the same files in parallel.
-```
-
-This can happen if a previous run was interrupted. Unlock the directory:
-
-```bash
-./run_container.sh run -v /path/to/input/data:/data/input -v $(pwd)/pipeline_outputs:/data/output -v $(pwd)/workflows:/app/workflows snakemake --snakefile /app/workflows/Snakefile -d /app/workflows --unlock
-```
-
-### Memory Issues
-
-If the container crashes due to memory limitations:
-
-1. Reduce parallelization: Use `--cores 1` to run one job at a time
-2. Increase Docker memory limit: Edit Docker settings to provide more memory
-3. Modify the `n_jobs` and `memory_limit` settings in the config file
-
-### File Permission Issues
-
-If you encounter permissions issues accessing output files:
-
-```bash
-sudo chown -R $(id -u):$(id -g) pipeline_outputs/
-```
-
-## Copyright
+## License and Citation
 
 © 2025 Dilanjan DK and BrainLab, University of Western Ontario. All rights reserved.
 
-**Contact:** Dilanjan DK (ddiyabal@uwo.ca)
-
-This software and its documentation are proprietary and confidential. Unauthorized copying, transfer, or use of this software, its documentation, and related materials, via any medium, is strictly prohibited without prior written consent from the copyright holders.
-
-## Citation
-
-If you use this pipeline in your research, please cite:
-
-```
-Dilanjan, DK. (2025). fMRI Feature Extraction Container: A Comprehensive Pipeline for Analytical Metrics. BrainLab, University of Western Ontario.
-```
-
-## Acknowledgments
-
-This pipeline incorporates several open-source tools and packages:
-- Snakemake for workflow management
-- Nilearn and Nibabel for neuroimaging analysis
-- AFNI for ReHo computation
-- QM_FFT_Feature_Package for quantum mechanical analysis 
-
-Developed at the BrainLab, University of Western Ontario by Dilanjan DK.
+If you use this pipeline in your research, please cite appropriately according to the guidelines in the [Citation Guide](docs/CITATION.md).
